@@ -10,6 +10,13 @@ data RBTree : Type -> Type where
       Node : Ord elem => (left: RBTree elem) -> (val: elem) -> (col: Colour) -> (right: RBTree elem) ->
                         RBTree elem
 
+rbSearch : Ord elem => elem -> RBTree elem -> Bool
+rbSearch x Empty = False
+rbSearch x (Node left val _ right) = case compare x val of
+                                      LT => rbSearch x left
+                                      EQ => True
+                                      GT => rbSearch x right
+
 public export
 makeBlack : RBTree elem -> RBTree elem
 makeBlack (Node left val _ right) = Node left val Black right
