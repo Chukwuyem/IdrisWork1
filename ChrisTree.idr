@@ -8,6 +8,9 @@ data RBTree : Type -> Nat -> Colour -> Type where
   RBBlack : a -> RBTree a h c1 -> RBTree a h c2 -> RBTree a (S h) Black
   RBRed : a -> RBTree a h Black -> RBTree a h Black -> RBTree a h Red
 
+-- These are shorthand for leaf nodes, where both children are nil. Note the
+-- black-heights are different because they *include* the top/root node.
+
 redLeaf : a -> RBTree a 1 Red
 redLeaf a = RBRed a RBNil RBNil
 
