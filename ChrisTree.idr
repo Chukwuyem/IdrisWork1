@@ -13,6 +13,11 @@ data RBTree : Type -> Nat -> Colour -> Type where
   RBBlack : a -> RBTree a h c1 -> RBTree a h c2 -> RBTree a (S h) Black
   RBRed : a -> RBTree a h Black -> RBTree a h Black -> RBTree a h Red
 
+-- data RBUnbalanced : Type -> Nat -> Colour -> Type where
+--   RBLeftHeavy : a -> RBTree a h Red -> RBTree a h Black -> RBUnbalanced a h Red
+--   RBRightHeavy : a -> RBTree a h Black -> RBTree a h Red -> RBUnbalanced a h Red
+--   RBUnbalancedRed : a -> RBTree a h c1 -> RBTree a h c2 -> RBTree a h Red
+
 -- These are shorthand for leaf nodes, where both children are nil. Note the
 -- black-heights are different because they *include* the top/root node.
 
