@@ -3,67 +3,39 @@
 
 data Colour = Red | Black
 
-total
-mergeColours : Colour -> Colour -> Colour -> Colour
-mergeColours Black Black Red = Red
-mergeColours _ _ _ = Black
+incrementIfBlack : Colour -> Nat -> Nat
+incrementIfBlack Black n = S n
+incrementIfBlack Red n = n
 
-data RBTree : Type -> Nat -> Colour -> Type where
-  RBNil : RBTree a 0 Black
-  RBBlack : a -> RBTree a h c1 -> RBTree a h c2 -> RBTree a (S h) Black
-  RBRed : a -> RBTree a h Black -> RBTree a h Black -> RBTree a h Red
+data Triad : (parent:Colour) ->  (left:Colour) -> (right:Colour) -> Type where
+  R : Triad Red Black Black
+  B : Triad Black c1 c2
 
--- data RBUnbalanced : Type -> Nat -> Colour -> Type where
---   RBLeftHeavy : a -> RBTree a h Red -> RBTree a h Black -> RBUnbalanced a h Red
---   RBRightHeavy : a -> RBTree a h Black -> RBTree a h Red -> RBUnbalanced a h Red
---   RBUnbalancedRed : a -> RBTree a h c1 -> RBTree a h c2 -> RBTree a h Red
+data RBTree : Type -> Colour -> Nat -> Type where
+  RBNil : RBTree elem Black 0
+  RBNode : Triad c c1 c2
+       -> elem
+       -> RBTree elem c1 h
+       -> RBTree elem c2 h
+       -> RBTree elem c (incrementIfBlack c h)
 
--- These are shorthand for leaf nodes, where both children are nil. Note the
--- black-heights are different because they *include* the top/root node.
-
-redLeaf : a -> RBTree a 0 Red
-redLeaf a = RBRed a RBNil RBNil
-
-blackLeaf : a -> RBTree a 1 Black
-blackLeaf a = RBBlack a RBNil RBNil
+leaf : Triad c Black Black -> elem -> RBTree elem c (incrementIfBlack c 0)
+leaf c elem = RBNode c elem RBNil RBNil
 
 -- The following definitions assemble the tree pictured at
 -- https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Red-black_tree_example.svg/1920px-Red-black_tree_example.svg.png
 
-example1 : RBTree Int 1 Black
-example1 =
-  RBBlack 1 RBNil (redLeaf 6)
-
-example8 : RBTree Int 1 Red
-example8 =
-  RBRed 8 example1 (blackLeaf 11)
-
-example25 : RBTree Int 1 Black
-example25 =
-  RBBlack 25 (redLeaf 22) (redLeaf 27)
-
-example17 : RBTree Int 1 Red
-example17 =
-  RBRed 17 (blackLeaf 15) example25
-
-example13 : RBTree Int 2 Black
-example13 =
-  RBBlack 13 example8 example17
+example : RBTree Int Black 2
+example =
+  RBNode B 13
+  (RBNode R 8 (RBNode B 1 RBNil (leaf R 6)) (leaf B 11))
+  (RBNode R 17 (leaf B 15) (RBNode B 25 (leaf R 22) (leaf R 27)))
 
 -- But we can't have two consecutive reds (this should throw type mismatch):
--- λ> RBRed 'A' (redLeaf 'B') RBNil
+-- λ> RBNode R 'A' (leaf R 'B') RBNil
 
 -- And we can't imbalance black:
--- λ> RBBlack 'A' (RBBlack 'B' (blackLeaf 'C') RBNil) RBNil
-
-balance : RBTree e h a
-  -> e -> RBTree e h b
-  -> e -> RBTree e h c
-  -> e -> RBTree e h d
-  -> RBTree e (S h) Red
-
-balance a x b y c z d =
-  RBRed y (RBBlack x a b) (RBBlack z c d)
+-- λ> RBNode B 'A' (RBNode B 'B' (leaf B 'C') RBNil) RBNil
 
 -- It's always possible to make the root of a tree black, but it might increase
 -- the height.
@@ -73,81 +45,99 @@ incrementIfRed Red n = S n
 incrementIfRed Black n = n
 
 total
-makeBlack : RBTree e h c -> RBTree e (incrementIfRed c h) Black
-makeBlack (RBRed e l r) = RBBlack e l r
-makeBlack (RBBlack e l r) = RBBlack e l r
+makeBlack : RBTree e c h -> RBTree e Black (incrementIfRed c h)
+makeBlack (RBNode B e l r) = RBNode B e l r
+makeBlack (RBNode R e l r) = RBNode B e l r
 makeBlack RBNil = RBNil
 
 total
-contains : Ord e => RBTree e h c -> e -> Bool
+contains : Ord e => RBTree e c h -> e -> Bool
 contains RBNil _ = False
-contains (RBRed e l r) goal =
-  case compare goal e of
-    EQ => True
-    LT => contains l goal
-    GT => contains r goal
-contains (RBBlack e l r) goal = -- Would be nice to elim this duplication
-  case compare goal e of        -- but solve insert w/rebalancing first.
-    EQ => True
-    LT => contains l goal
-    GT => contains r goal
+contains (RBNode _ e l r) goal with (compare goal e)
+  | EQ = True
+  | LT = contains l goal
+  | GT = contains r goal
 
 
--- What are all the types that can happen with bottom layer of insert?
+data Unbal : Type -> Colour -> Nat -> Type where
+  UnNil : Unbal elem Black 0
+  UnNode : (c : Colour)
+    -> elem
+    -> RBTree elem c1 h
+    -> RBTree elem c2 h
+    -> Unbal elem c (incrementIfBlack c h)
 
--- At the root, tree will always be black. So we can insert a red and
--- bubble/rotate as much as needed (possibly all the way to root) without
--- changing the height. Then when all done, makeBlack will potentially increment
--- the height.
+  
+--total  -- Not sure what cases are missing?
+rebalanceLeft
+  : elem
+  -> Unbal elem c1 h
+  -> RBTree elem c2 h
+  -> (c : Colour ** RBTree elem c (S h))
+
+rebalanceLeft z UnNil d = (Black ** RBNode B z RBNil d)
+
+rebalanceLeft z (UnNode Black y a b) c =
+  (Black ** RBNode B z (RBNode B y a b) c)
+
+rebalanceLeft z (UnNode Red y (RBNode R x a b) c) d =
+  (Red ** RBNode R y (RBNode B x a b) (RBNode B z c d))
+
+rebalanceLeft z (UnNode Red x a (RBNode R y b c)) d =
+  (Red ** RBNode R y (RBNode B x a b) (RBNode B z c d))
+
+rebalanceLeft z (UnNode Red y t@(RBNode B _ _ _) v@(RBNode B _ _ _)) c =
+  (Black ** RBNode B z (RBNode R y t v) c)
+
+-- Trying out base case that actually has 2 nodes above nil. If both nodes are
+-- black, that would be height 2? But if it's black-red that would be height 1.
+
+-- All trees of height 1:
+--   (B nil nil)
+--   (B (R nil nil) nil)
+--   (B nil (R nil nil))
+--   (B (R nil nil) (R nil nil))
 
 total
-insert1 : Ord e => RBTree e 0 Black -> e -> RBTree e 0 Red
-insert1 RBNil e = redLeaf e
+insertAtLeftRedLeaf : Ord elem => elem -> RBTree elem Red 0 -> elem -> Maybe (RBTree elem Red 1)
+insertAtLeftRedLeaf y (RBNode R x _ _) new =
+  -- We're assuming x<y because this is a left-leaf of y.
+  case compare new x of
+    EQ => Nothing
+    LT =>
+      -- Order is: new < x < y
+      Just (RBNode R x (leaf B new) (leaf B y))
+    GT =>
+      -- Order is: x < new < y
+      Just (RBNode R new (leaf B x) (leaf B y))
+
+--total -- Can't get totality here either :(
+
+insert1 : Ord elem => RBTree elem Black 1 -> elem -> (c : Colour ** RBTree elem c 1)
+insert1 t@(RBNode B x l r) new =
+  case compare new x of
+    EQ => (Black ** t)
+    LT =>
+      case l of
+        RBNil => (Black ** RBNode B x (leaf R new) r)
+        RBNode R w RBNil RBNil =>
+          case compare new w of
+            EQ => (Black ** t)
+            LT => (Red ** RBNode R w (leaf B new) (leaf B x))
+            GT => (Red ** RBNode R new (leaf B w) (leaf B x))
+    GT =>
+      case r of
+        RBNil => (Black ** RBNode B x l (leaf R new))
+        RBNode R y RBNil RBNil =>
+          case compare new y of
+            EQ => (Black ** t)
+            LT => (Red ** RBNode R new (leaf B x) (leaf B y))
+            GT => (Red ** RBNode R y (leaf B x) (leaf B new))
 
 
---total
---insert2 : Ord e => RBTree e 1 Black -> e -> RBTree e 1 Black
---insert2 t@(RBBlack x _ _) | x == e = t
--- insert2 (RBBlack x RBNil RBNil) e =
---   case compare e x of
---     EQ => blackLeaf x
---     LT => RBBlack x (redLeaf e) RBNil
---     GT => RBBlack x RBNil (redLeaf e)
+--t2 : RBTree Char Black 1
+-- t2 = snd (insert1 (leaf B 'X') 'W')
 
--- insert (RBRed x RBNil RBNil) e = -- 1R -> 2B
---   case compare e x of
---     EQ => blackLeaf x
---     LT => RBBlack x (redLeaf e) RBNil
---     GT => RBBlack x RBNil (redLeaf e)
-
--- insert (RBBlack x RBNil RBNil) e = -- 2B -> 2B
---   case compare e x of
---     EQ => blackLeaf x
---     LT => RBBlack x (redLeaf e) RBNil
---     GT => RBBlack x RBNil (redLeaf e)
-
--- insert t@(RBBlack x (RBRed w RBNil RBNil) RBNil) e = -- 2B -> 2B
---   case compare e x of
---     EQ => t
---     GT => RBBlack x (redLeaf w) (redLeaf x)
---     LT =>
---       case compare e w of
---         EQ => t
---         LT => RBBlack w (redLeaf e) (redLeaf x) -- e,w,x
---         GT => RBBlack e (redLeaf w) (redLeaf x) -- w,e,x
-
-
-
---
---  redLeaf 'X' : 1R
---    => RBBlack 'X' (redLeaf 'W') RBNil : 2B  // LT
---     | blackLeaf 'X' : 2B                    // EQ
---
---  blackLeaf 'X' : 2B
---    => RBBlack 'X' (redLeaf 'W') RBNil : 2B  // LT
-
--- insert : Ord e => RBTree e h c -> e -> RBTree e h Red
--- insert RBNil e = redLeaf e
--- insert (RBBlack x RBNil RBNil) e =
---   case compare e x of
---     EQ => (RBBlack x RBNil RBNil)
+-- insert1 (RBNode B y (RBNode R x RBNil RBNil) RBNil) = True
+-- insert1 (RBNode B y RBNil (RBNode R z RBNil RBNil)) = True
+-- insert1 (RBNode B y (RBNode R x RBNil RBNil) (RBNode R z RBNil RBNil)) = True
