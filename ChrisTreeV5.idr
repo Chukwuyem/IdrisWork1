@@ -83,7 +83,7 @@ insert a t@(BNode l x r) =
         BNode _ _ _ => BLeft (insert a l) x r
         RNode _ _ _ => BLeft (insert a l) x r
     GT =>
-      case l of
+      case r of
         RBNil => BRight l x (BalRB(leaf Red a))
         BNode _ _ _ => BRight l x (insert a r)
         RNode _ _ _ => BRight l x (insert a r)
@@ -96,6 +96,6 @@ insert a t@(RNode l x r) =
         RBNil => RRLeft (leaf Red a) x r
         BNode _ _ _ => RLeft (insert a l) x r
     GT =>
-      case l of
+      case r of
         RBNil => RRRight l x (leaf Red a)
         BNode _ _ _ => RRight l x (insert a r)
