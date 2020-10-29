@@ -36,10 +36,6 @@ balance (BLeft (RRRight a x (RNode b y c)) z d) = (Red ** RNode (BNode a x b) y 
 
 balance (BLeft (BalRB t) x b) = (Black ** BNode t x b)
 
-balance (BLeft t@(BLeft _ _ _) y c) = (Black ** BNode (snd (balance t)) y c)
-
-balance (BLeft t@(BRight _ _ _) y c) = (Black ** BNode (snd (balance t)) y c)
-
 balance (BLeft (RLeft t x b) y c) =
   case balance t of
     (Red ** t2) => balance (BLeft (RRLeft t2 x b) y c)
@@ -66,9 +62,21 @@ balance (BRight a x (RRRight b y (RNode c z d))) = (Red ** RNode (BNode a x b) y
 
 balance (BRight a x (BalRB t)) = (Black ** BNode a x t)
 
-balance (BRight a x t@(BLeft _ _ _)) = (Black ** BNode a x (snd (balance t)))
+balance (BLeft t@(BLeft _ _ _) y c) =
+    case balance t of
+      (_ ** t2) => (Black ** BNode t2 y c)
 
-balance (BRight a x t@(BRight _ _ _)) = (Black ** BNode a x (snd (balance t)))
+balance (BLeft t@(BRight _ _ _) y c) =
+    case balance t of
+      (_ ** t2) => (Black ** BNode t2 y c)
+
+balance (BRight a x t@(BLeft _ _ _)) =
+    case balance t of
+      (_ ** t2) => (Black ** BNode a x t2)
+
+balance (BRight a x t@(BRight _ _ _)) =
+    case balance t of
+      (_ ** t2) => (Black ** BNode a x t2)
 
 
 insert : Ord a => a -> RB a c h -> UnbalRB a c h
