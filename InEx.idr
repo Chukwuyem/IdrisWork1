@@ -16,6 +16,7 @@ lappend (x::xs) ys = x :: lappend xs ys
 --sumLengths : (n:Nat) -> (m:Nat) -> (xs : List a) -> length []
 -- sumLengths = PROOF
  
+total
 appendLengths : (xs : List a) -> (ys : List a) ->  
   length (lappend xs ys) = length xs + length ys
 appendLengths [] _ = Refl
@@ -24,7 +25,9 @@ appendLengths [] _ = Refl
   --    length ys = length [] + length ys             # Expand lappend base case
   --    length ys = 0 + length ys                   # Length [] = 0
   --    length ys = length ys                       # Adding 0 doesn't change
---appendLengths (x::xs) ys = Refl
+appendLengths (x::xs) ys = 
+  rewrite appendLengths xs ys in
+  Refl
   -- Chain of inference for inductive case:
   --    length (lappend (x::xs) ys) = length (x::xs) + length ys # Subst xs
   --    length (x :: lappend xs ys) = length (x::xs) + length ys # Expand lappend
@@ -41,16 +44,30 @@ emplist = Refl
 -- Reverse a list without using append (accumulator argument)
 
 revv : List a -> List a -> List a
-revv [] ys = ys
-revv (x::xs) ys = revv xs (x::ys)
+revv accum [] = accum
+revv accum (x::xs) = revv (x::accum) xs
 
-rev1 : List a -> List a
-rev1 xs = revv xs []
+-- revvLength : (xs: List a) -> (ys: List a) -> 
+--    length (revv xs ys) = length xs + length ys
+-- revvLength accum [] = rewrite plusZeroRightNeutral (length accum) in Refl
+-- revvLength accum (x::xs) = 
+--   rewrite plusSuccRightSucc (length accum) (length xs) in ?x
+--  rewrite revvLength accum xs in ?x
+
+-- rev1 : List a -> List a
+-- rev1 xs = revv [] xs
+
+-- rev1Length : (xs: List a) -> length xs = length (rev1 xs)
+-- rev1Length xs =
+--   rewrite revvLength [] xs in
+--   Refl
+
+
 
 -- Vector version
 
-revvv : Vect n a -> Vect m a -> Vect (n+m) a
-revvv [] ys = ys
-revvv (x::xs) ys = revvv xs (x::ys)
+-- revvv : Vect n a -> Vect m a -> Vect (n+m) a
+-- revvv [] ys = ys
+-- revvv (x::xs) ys = revvv xs (x::ys)
 
 
