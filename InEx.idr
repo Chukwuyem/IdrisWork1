@@ -37,37 +37,52 @@ appendLengths (x::xs) ys =
   --    length (lappend xs ys) = (length xs + length ys) # Inductive hypothesis
   --    QED.
 
-total
-emplist : 5 = 5
-emplist = Refl
-
 -- Reverse a list without using append (accumulator argument)
 
-revv : List a -> List a -> List a
-revv accum [] = accum
-revv accum (x::xs) = revv (x::accum) xs
+total
+revHelper : List a -> List a -> List a
+revHelper [] accum = accum
+revHelper (x::xs) accum = revHelper xs (x::accum)
 
--- revvLength : (xs: List a) -> (ys: List a) -> 
---    length (revv xs ys) = length xs + length ys
--- revvLength accum [] = rewrite plusZeroRightNeutral (length accum) in Refl
--- revvLength accum (x::xs) = 
---   rewrite plusSuccRightSucc (length accum) (length xs) in ?x
---  rewrite revvLength accum xs in ?x
+total
+lengthRevHelper : (xs: List a) -> (accum: List a) -> length (revHelper xs accum) = length xs + length accum
+lengthRevHelper [] _ = Refl
+lengthRevHelper (x::xs) accum =
+  rewrite lengthRevHelper xs (x::accum) in 
+  rewrite plusSuccRightSucc (length xs) (length accum) in
+  Refl
 
--- rev1 : List a -> List a
--- rev1 xs = revv [] xs
+-- Top-level invocation of reverse, using helper
 
--- rev1Length : (xs: List a) -> length xs = length (rev1 xs)
--- rev1Length xs =
---   rewrite revvLength [] xs in
---   Refl
+total
+myRev : List a -> List a
+myRev xs = revHelper xs [] 
 
+total
+lengthMyRev : (xs: List a) -> length (myRev xs) = length xs
+lengthMyRev xs = 
+  rewrite lengthRevHelper xs [] in 
+  rewrite plusZeroRightNeutral (length xs) in
+  Refl
 
+-- Reverse a list using append (so we'll rely on our implementation and proof of lengths)
 
--- Vector version
+total
+myRevApp : List a -> List a
+myRevApp [] = []
+myRevApp (x::xs) = lappend (myRevApp xs) [x]
 
--- revvv : Vect n a -> Vect m a -> Vect (n+m) a
--- revvv [] ys = ys
--- revvv (x::xs) ys = revvv xs (x::ys)
+-- Appending a single element to the end increases length by 1.
+total
+snocLengthSucc : (xs : List a) -> (y: a) -> length (lappend xs [y]) = S (length xs)
+snocLengthSucc [] x = Refl
+snocLengthSucc (x::xs) y =
+  rewrite snocLengthSucc xs y in Refl
 
-
+-- Now we can prove that append-based reverse preserves length.
+total
+lengthMyRevApp : (xs: List a) -> length (myRevApp xs) = length xs
+lengthMyRevApp [] = Refl
+lengthMyRevApp (x::xs) =
+  rewrite snocLengthSucc (myRevApp xs) x in 
+  rewrite lengthMyRevApp xs in Refl
